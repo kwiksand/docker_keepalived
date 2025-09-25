@@ -76,10 +76,10 @@ ADVERT_INT=${ADVERT_INT:-${DEFAULTS[ADVERT_INT]}}
 FOUND_IPv4=false
 FOUND_IPv6=false
 for vip in $VIP_ADDRESSES; do
-  if [[ $vip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if [[ $vip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
     VIP_ADDRESSES_IPV4="$VIP_ADDRESSES_IPV4 $vip"
     export FOUND_IPv4=true
-  elif [[ $vip =~ ^[0-9a-fA-F:]+$ ]] || [[ $vip == "::1" ]]; then
+  elif [[ $vip =~ ^[0-9a-fA-F:\/]+$ ]] || [[ $vip == "::1" ]]; then
     VIP_ADDRESSES_IPV6="$VIP_ADDRESSES_IPV6 $vip"
     export FOUND_IPv6=true
   else
