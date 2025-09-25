@@ -73,10 +73,28 @@ AUTH_PASS=${AUTH_PASS:-${DEFAULTS[AUTH_PASS]}}
 PRIORITY=${PRIORITY:-${DEFAULTS[PRIORITY]}}
 ADVERT_INT=${ADVERT_INT:-${DEFAULTS[ADVERT_INT]}}
 
+FOUND_IPv4=false
+FOUND_IPv6=false
+for vip in $VIP_ADDRESSES; do
+  if [[ $vip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    VIP_ADDRESSES_IPV4="$VIP_ADDRESSES_IPV4 $vip"
+    export FOUND_IPv4=true
+  elif [[ $vip =~ ^[0-9a-fA-F:]+$ ]] || [[ $ip == "::1" ]]; then
+    VIP_ADDRESSES_IPV6="$VIP_ADDRESSES_IPV6 $vip"
+    export FOUND_IPv6=true
+  else
+    echo "Invalid Address specified in VIP_ADDRESSES ($vip)"
+    exit 1
+  fi
+done
+
 # Generate keepalived.conf
 # Start with the main block
-cat >"$APP_CONFIG" <<EOF
-vrrp_instance ${VID} {
+echo "" >"$APP_CONFIG"
+
+if [[ "${FOUND_IPv4:-false}" == "true" ]]; then
+  cat >>"$APP_CONFIG" <<EOF
+vrrp_instance ${VID}_IPv4 {
     state ${STATE}
     interface ${HOST_INTERFACE}
     virtual_router_id ${ROUTER_ID}
@@ -89,16 +107,44 @@ vrrp_instance ${VID} {
     virtual_ipaddress {
 EOF
 
-# Add VIP addresses from the space-separated VIP_ADDRESSES variable
-for vip in $VIP_ADDRESSES; do
-  echo "        ${vip} dev ${HOST_INTERFACE}" >>"$APP_CONFIG"
-done
+  # Add VIP addresses from the space-separated VIP_ADDRESSES variable
+  for vip in $VIP_ADDRESSES_IPV4; do
+    echo "        ${vip} dev ${HOST_INTERFACE}" >>"$APP_CONFIG"
+  done
 
-# Close the blocks
-cat >>"$APP_CONFIG" <<EOF
+  # Close the blocks
+  cat >>"$APP_CONFIG" <<EOF
     }
 }
 EOF
+fi
+
+if [[ "${FOUND_IPv6:-false}" == "true" ]]; then
+  cat >>"$APP_CONFIG" <<EOF
+vrrp_instance ${VID}_IPv6 {
+    state ${STATE}
+    interface ${HOST_INTERFACE}
+    virtual_router_id ${ROUTER_ID}
+    priority ${PRIORITY}
+    advert_int ${ADVERT_INT}
+    authentication {
+        auth_type ${AUTH_TYPE}
+        auth_pass ${AUTH_PASS}
+    }
+    virtual_ipaddress {
+EOF
+
+  # Add VIP addresses from the space-separated VIP_ADDRESSES variable
+  for vip in $VIP_ADDRESSES_IPV6; do
+    echo "        ${vip} dev ${HOST_INTERFACE}" >>"$APP_CONFIG"
+  done
+
+  # Close the blocks
+  cat >>"$APP_CONFIG" <<EOF
+    }
+}
+EOF
+fi
 
 echo "--- keepalived.conf content ---"
 cat "$APP_CONFIG" | sed -e 's/auth_pass .*/auth_pass #REDACTED#/g'

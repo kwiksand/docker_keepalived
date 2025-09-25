@@ -4,7 +4,7 @@ version: '3.8'
 services:
   keepalived:
     build: .
-    image: ghcr.io/kwiksand/docker_keepalived
+    image: ghcr.io/kwiksand/docker_keepalived:latest-amd64 # or latest-arm64
     container_name: keepalived
     network_mode: "host"
     cap_add:
