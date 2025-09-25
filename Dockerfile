@@ -9,7 +9,7 @@ WORKDIR /app/
 COPY run-keepalived.sh /app/
 RUN chmod +x /app/run-keepalived.sh
 
-# HEALTHCHECK --interval=12s --timeout=2s --start-period=10s \  
-#   CMD pgrep /usr/sbin/ucarp || exit 1
+HEALTHCHECK --interval=12s --timeout=2s --start-period=10s \  
+  CMD pgrep /usr/sbin/keepalived || exit 0
 
 CMD ["./run-keepalived.sh"]

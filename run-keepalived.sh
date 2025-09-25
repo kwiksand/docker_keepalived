@@ -8,9 +8,9 @@ function cleanup() {
   echo "Graceful shutdown requested..."
 
   echo "Removing set VIPs"
-  for vip in $VIP_ADDRESSES; do
-    /app/vip-down.sh "$HOST_INTERFACE" "$vip"
-  done
+  # for vip in $VIP_ADDRESSES; do
+  #   /app/vip-down.sh "$HOST_INTERFACE" "$vip"
+  # done
 
   # If a child process is running, send it a SIGTERM
   if [ $child_pid -ne 0 ]; then
@@ -37,14 +37,16 @@ echo "Starting main process..."
 # Associative array for default parameters
 declare -A DEFAULTS
 DEFAULTS=(
-    [VID]="VI_1"
-    [STATE]="MASTER"
-    [ROUTER_ID]="51"
-    [AUTH_TYPE]="PASS"
-    [AUTH_PASS]="1111"
-    [PRIORITY]="100"
-    [ADVERT_INT]="1"
+  [VID]="VI_1"
+  [STATE]="MASTER"
+  [ROUTER_ID]="51"
+  [AUTH_TYPE]="PASS"
+  [AUTH_PASS]="1111"
+  [PRIORITY]="100"
+  [ADVERT_INT]="1"
 )
+
+APP_CONFIG=/app/keepalived.conf
 
 # Required parameters - now VIP_ADDRESSES
 REQUIRED_PARAMS=("VIP_ADDRESSES" "HOST_INTERFACE")
@@ -73,7 +75,7 @@ ADVERT_INT=${ADVERT_INT:-${DEFAULTS[ADVERT_INT]}}
 
 # Generate keepalived.conf
 # Start with the main block
-cat > /app/keepalived.conf <<EOF
+cat >"$APP_CONFIG" <<EOF
 vrrp_instance ${VID} {
     state ${STATE}
     interface ${HOST_INTERFACE}
@@ -89,21 +91,21 @@ EOF
 
 # Add VIP addresses from the space-separated VIP_ADDRESSES variable
 for vip in $VIP_ADDRESSES; do
-  echo "        ${vip} dev ${HOST_INTERFACE}" >> /app/keepalived.conf
+  echo "        ${vip} dev ${HOST_INTERFACE}" >>"$APP_CONFIG"
 done
 
 # Close the blocks
-cat >> /app/keepalived.conf <<EOF
+cat >>"$APP_CONFIG" <<EOF
     }
 }
 EOF
 
 echo "--- keepalived.conf content ---"
-cat /app/keepalived.conf
+cat "$APP_CONFIG" | sed -e 's/auth_pass .*/auth_pass #REDACTED#/g'
 echo "---------------------------------"
 
 # Start keepalived in the background to be able to trap signals
-/usr/sbin/keepalived --dont-fork --dump-conf --log-console --log-detail --log-facility 7 &
+/usr/sbin/keepalived -f "$APP_CONFIG" --dont-fork --dump-conf --log-console --log-detail --log-facility 7 &
 child_pid=$!
 
 echo "keepalived process started with PID: $child_pid"

@@ -4,7 +4,7 @@ version: '3.8'
 services:
   keepalived:
     build: .
-    image: docker-keepalived
+    image: ghcr.io/kwiksand/docker_keepalived
     container_name: keepalived
     network_mode: "host"
     cap_add:
@@ -12,8 +12,8 @@ services:
       - NET_RAW
     environment:
       # - VID=VI_1
-      - HOST_INTERFACE=eth0
-      - VIP_ADDRESSES="192.168.1.100/24 192.168.1.101/24"
+      - HOST_INTERFACE=wlan0
+      - VIP_ADDRESSES="192.168.100.187/24"
       # - VIP_ADDRESSES="192.168.1.100/24 2001:db8::1/64" # IPv4 and IPv6 example
       - AUTH_PASS="IC5t#0UMf!"
       # - STATE=BACKUP # Desired State MASTER/BACKUP
