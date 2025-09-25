@@ -1,0 +1,79 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-test-syntax:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Required for pushing to GHCR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # super-linter needs the full git history to get the
+          # list of files that changed across commits
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Super-linter
+        uses: super-linter/super-linter/slim@v8.1.0 # x-release-please-version
+        env:
+          # To report GitHub Actions status checks
+          DEFAULT_BRANCH: main
+          # Set your fix mode variables to true
+          FIX_SHELL_SHFMT: true
+          FIX_MARKDOWN_PRETTIER: true
+          FIX_YAML_PRETTIER: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_CHECKOV: false
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
+          VALIDATE_MARKDOWN: false
+          VALIDATE_TRIVY: false
+
+  build-and-push:
+    #runs-on: ubuntu-latest
+    needs: lint-test-syntax
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: ubuntu-24.04
+          - platform: arm64
+            runner: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write # Required for pushing to GHCR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # super-linter needs the full git history to get the
+          # list of files that changed across commits
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_NAME=docker_keepalived
+          IMAGE_TAG=${{ github.sha }}-${{ matrix.platform }} # Or use 'latest' or a version number
+          IMAGE_TAG=latest-${{ matrix.platform }} # Or use 'latest' or a version number
+          docker build --platform linux/${{ matrix.platform }} --tag ghcr.io/${{ github.repository_owner }}/${IMAGE_NAME}:${IMAGE_TAG} .
+          docker push ghcr.io/${{ github.repository_owner }}/${IMAGE_NAME}:${IMAGE_TAG}
