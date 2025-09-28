@@ -44,6 +44,7 @@ DEFAULTS=(
   [AUTH_PASS]="1111"
   [PRIORITY]="100"
   [ADVERT_INT]="1"
+  [VERBOSE]="0"
 )
 
 APP_CONFIG=/app/keepalived.conf
@@ -72,6 +73,7 @@ AUTH_TYPE=${AUTH_TYPE:-${DEFAULTS[AUTH_TYPE]}}
 AUTH_PASS=${AUTH_PASS:-${DEFAULTS[AUTH_PASS]}}
 PRIORITY=${PRIORITY:-${DEFAULTS[PRIORITY]}}
 ADVERT_INT=${ADVERT_INT:-${DEFAULTS[ADVERT_INT]}}
+VERBOSE=${VERBOSE:-${DEFAULTS[VERBOSE]}}
 
 FOUND_IPv4=false
 FOUND_IPv6=false
@@ -150,8 +152,10 @@ echo "--- keepalived.conf content ---"
 cat "$APP_CONFIG" | sed -e 's/auth_pass .*/auth_pass #REDACTED#/g'
 echo "---------------------------------"
 
+[[ $VERBOSE -gt 0 ]] && log_detail="--log-detail"
+
 # Start keepalived in the background to be able to trap signals
-/usr/sbin/keepalived -f "$APP_CONFIG" --dont-fork --dump-conf --log-console --log-detail --log-facility 7 &
+/usr/sbin/keepalived -f "$APP_CONFIG" --dont-fork --dump-conf --log-console "${log_detail}" --log-facility 7 &
 child_pid=$!
 
 echo "keepalived process started with PID: $child_pid"
