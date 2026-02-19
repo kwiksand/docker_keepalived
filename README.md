@@ -1,4 +1,4 @@
-#docker_keepalived
+# docker_keepalived
 ============
 
 [![Docker Image CI](https://github.com/kwiksand/docker_keepalived/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/kwiksand/docker_keepalived/actions/workflows/main.yml)
@@ -6,7 +6,7 @@
 Builds a basic keepalived enabled container, which creates a virtual (VRRP) IP(s) (VIP_ADDRESSES) on the host interface (HOST_INTERFACE) using keepalived.
 
 
-##Usage
+## Usage
 
 * Build:
 ```
