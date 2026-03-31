@@ -1,23 +1,43 @@
 ---
-version: '3.8'
-
 services:
   keepalived:
-    build: .
+    build: ./docker
     image: ghcr.io/kwiksand/docker_keepalived:latest-amd64 # or latest-arm64
-    container_name: keepalived
+    container_name: keepalived_test
     network_mode: "host"
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    env_file: keepalived.env
     environment:
-      # - VID=VI_1
-      - HOST_INTERFACE=wlan0
-      - VIP_ADDRESSES="192.168.100.187/24"
-      # - VIP_ADDRESSES="192.168.1.100/24 2001:db8::1/64" # IPv4 and IPv6 example
-      - AUTH_PASS="IC5t#0UMf!"
-      # - STATE=BACKUP # Desired State MASTER/BACKUP
-      # - PRIORITY=90 # Node Priority [1-255] highest wins MASTER
-      # - ROUTER_ID=51
-      # - ADVERT_INT=1 # Advertisement interval (sec)
+      # Global settings
+      - INTERFACE=ens3
+      # List of instances to generate
+      - INSTANCES=VIP_1,VIP_2,VIP_3
+      # #### VIP_1 settings
+      # - VIP_1_ID=62
+      # - VIP_1_STATE=MASTER
+      # - VIP_1_PRIORITY=100
+      # - VIP_1_IP=192.168.1.187/24
+      # # - VIP_1_INTERFACE=eth0 # Optional: override global INTERFACE
+      # # VIP_1_PASS is provided in the .env file
+      # #- VIP_1_PASS=${VIP_1_PASS}
+      # #### VIP_2 settings
+      # - VIP_2_ID=63
+      # - VIP_2_STATE=MASTER
+      # - VIP_2_PRIORITY=100
+      # - VIP_2_IP=192.168.1.188/24
+      # # - VIP_2_INTERFACE=eth0 # Optional: override global INTERFACE
+      # # VIP_2_PASS is provided in the .env file
+      # #- VIP_2_PASS=${VIP_2_PASS}
+      # #### VIP_3 settings
+      # - VIP_3_ID=64
+      # - VIP_3_STATE=MASTER
+      # - VIP_3_PRIORITY=100
+      # - VIP_3_IP=192.168.1.189/24
+      # # - VIP_3_INTERFACE=eth0 # Optional: override global INTERFACE
+      # # VIP_3_PASS is provided in the .env file
+      # #- VIP_3_PASS=${VIP_3_PASS}
+    # To re-generate config file even if it exists:
+    # command: ["regenerate", "--log-detail"]
     restart: always
