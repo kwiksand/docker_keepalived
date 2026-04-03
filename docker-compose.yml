@@ -11,7 +11,7 @@ services:
     env_file: keepalived.env
     environment:
       # Global settings
-      - INTERFACE=ens3
+      - HOST_INTERFACE=ens3
       # List of instances to generate
       - INSTANCES=VIP_1,VIP_2,VIP_3
       # #### VIP_1 settings

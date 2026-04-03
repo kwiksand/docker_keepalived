@@ -8,106 +8,138 @@ Builds a basic keepalived enabled container, which creates a virtual (VRRP) IP(s
 
 ## Usage
 
-* Build:
-```
-$ docker build .
-```
+### 1. Basic Service Definition (Standard)
+Include the service directly in your `docker-compose.yml`. This is the most straightforward method.
 
-### Docker Compose (i.edocker-compose.yml)
-```docker
----
-
+```yaml
 services:
   keepalived:
-    build: .
-    image: docker-keepalived
+    image: ghcr.io/kwiksand/docker_keepalived:latest
     container_name: keepalived
     network_mode: "host"
     cap_add:
       - NET_ADMIN
       - NET_RAW
     environment:
-      # - VID=VI_1
       - HOST_INTERFACE=eth0
-      - VIP_ADDRESSES="192.168.1.100/24 192.168.1.101/24"
-      # - VIP_ADDRESSES="192.168.1.100/24 2001:db8::1/64" # IPv4 and IPv6 example
+      - VIP_ADDRESSES="192.168.1.100/24"
       - AUTH_PASS="#######"
-      # - STATE=BACKUP # Desired State MASTER/BACKUP
-      # - PRIORITY=90 # Node Priority [1-255] highest wins MASTER
-      # - ROUTER_ID=51
-      # - ADVERT_INT=1 # Advertisement interval (sec)
     restart: always
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-    healthcheck:
-      test: ["CMD", "pgrep", "/usr/sbin/keepalived"]
-      interval: 30s
-      tmeout: 10s
-      retries: 3
-
 ```
 
-### Run in Docker (direct)
-```bash
-$ docker run -e VID=VI_1 -e VIP_ADDRESSES="192.168.100.100/24" -e AUTH_PASS="#######" -e HOST_INTERFACE=eth0 --privileged=true --net=host ghcr.io/kwiksand/docker_keepalived
-```
+### 2. Using `include:` (Recommended)
+Modern Docker Compose (v2.20+) supports the `include` directive, allowing you to keep the VRRP logic in a separate file while using it in your main project.
 
-* Real World Use case:
-
-### Docker Compose (Include) supporting another service
-
-*keepalived_docker-compose.yml*
-```docker
----
+**keepalived-service.yml**
+```yaml
 services:
   keepalived:
-    build: .
-    pull_policy: daily
-    image: ghcr.io/kwiksand/docker_keepalived:latest-amd64
-    container_name: keepalived
+    image: ghcr.io/kwiksand/docker_keepalived:latest
     network_mode: "host"
-    privileged: true
-    security_opt:
-      - seccomp:unconfined
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    env_file: keepalived.env
+    cap_add: [NET_ADMIN, NET_RAW]
+    env_file: .env.keepalived
     restart: always
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-    healthcheck:
-      test: ["CMD", "pgrep", "/usr/sbin/keepalived"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-
 ```
 
-*docker-compose.yml*
-```docker
----
+**docker-compose.yml**
+```yaml
 include:
-  # keepalived service
-  #services:
-  #  keepalived:
-  #  image: ghcr.io/kwiksand/docker_keepalived:latest
-  #  env_file: keepalived.env
-  - keepalived_docker-compose.yml
+  - keepalived-service.yml
 
 services:
-  dns-server:
-    container_name: dns-server
-    hostname: moby_dns
-    image: technitium/dns-server:latest
-    dns:
-      #- 192.168.0.1 # Router
-      - 2606:4700:4700::1001 # Cloudflare (IPv6)
-      - 149.112.112.112 # Quad9
-      #- 1.0.0.1 # Cloudflare
-      #- 9.9.9.9 # Quad9
-      #- 2620:fe::9 # Quad9
-  ...
+  web-server:
+    image: nginx:latest
+    # ... your web server config
+```
+
+### 3. Using YAML Anchors (DRY Approach)
+If you have multiple stacks or need to reuse the complex `cap_add` and `network_mode` settings without duplicating them.
+
+```yaml
+x-keepalived-base: &keepalived-base
+  image: ghcr.io/kwiksand/docker_keepalived:latest
+  network_mode: "host"
+  cap_add: [NET_ADMIN, NET_RAW]
+  restart: always
+
+services:
+  keepalived-node:
+    <<: *keepalived-base
+    container_name: keepalived
+    environment:
+      - HOST_INTERFACE=ens3
+      - VIP_ADDRESSES="10.0.0.50/24"
+```
+
+### 4. Using `extends:` (Inheritance)
+Useful for inheriting a base configuration from an external file and overriding specific values.
+
+```yaml
+services:
+  keepalived:
+    extends:
+      file: common-services.yml
+      service: keepalived-base
+    environment:
+      - STATE=MASTER
+      - PRIORITY=100
+```
+
+### 5. Using Profiles (Conditional Deployment)
+Use Docker Compose profiles to only start Keepalived on specific nodes (e.g., in a cluster where only some nodes handle the VIP).
+
+```yaml
+services:
+  keepalived:
+    image: ghcr.io/kwiksand/docker_keepalived:latest
+    profiles: ["vrrp"]
+    # ... other config
+```
+Run with: `docker compose --profile vrrp up -d`
+
+## Configuration Options
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `HOST_INTERFACE` | The physical interface to bind the VIP to | `eth0` |
+| `VIP_ADDRESSES` | Space-separated list of VIPs (e.g. "1.2.3.4/24") | Required |
+| `AUTH_PASS` | VRRP authentication password (8 chars) | Required |
+| `STATE` | Initial state (`MASTER` or `BACKUP`) | `BACKUP` |
+| `PRIORITY` | Node priority (higher wins) | `100` |
+| `ROUTER_ID` | Virtual Router ID (0-255) | `51` |
+
+## Advanced Multi-VIP Configuration
+For complex setups with multiple VRRP instances, use the `INSTANCES` variable:
+
+```yaml
+environment:
+  - HOST_INTERFACE=ens3
+  - INSTANCES=VIP_1,VIP_2
+  - VIP_1_ID=10
+  - VIP_1_IP=192.168.1.50/24
+  - VIP_1_PASS=pass1234
+  - VIP_2_ID=20
+  - VIP_2_IP=192.168.1.60/24
+  - VIP_2_PASS=pass5678
+```
+
+## Direct Docker Usage
+
+### Build locally
+```bash
+docker build -t docker-keepalived ./docker
+```
+
+### Run directly
+```bash
+docker run -d \
+  --name keepalived \
+  --restart always \
+  --network host \
+  --cap-add NET_ADMIN \
+  --cap-add NET_RAW \
+  -e HOST_INTERFACE=eth0 \
+  -e VIP_ADDRESSES="192.168.1.100/24" \
+  -e AUTH_PASS="password" \
+  ghcr.io/kwiksand/docker_keepalived:latest
 ```
 
