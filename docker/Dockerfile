@@ -9,6 +9,15 @@ WORKDIR /app/
 COPY run-keepalived.sh /app/
 RUN chmod +x /app/run-keepalived.sh
 
+# Bundle sample scripts; these are copied to /config/scripts/ during init
+# and loaded from /config/scripts/ at runtime
+RUN mkdir -p /app/scripts /etc/keepalived/scripts
+COPY scripts/ /app/scripts/
+RUN chmod +x /app/scripts/*.sh
+
+# /config is the standard volume mount point for keepalived.conf and scripts/
+VOLUME ["/config"]
+
 HEALTHCHECK --interval=12s --timeout=2s --start-period=10s \
   CMD pgrep keepalived || exit 1
 
