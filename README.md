@@ -180,12 +180,12 @@ docker run --rm \
   -e VIP_1_STATE=MASTER \
   -e VIP_1_PRIORITY=100 \
   -e VIP_1_VIP=192.168.1.100/24 \
-  -e VIP_1_PASS=secretpass1 \
+  -e VIP_1_PASS=8ChrPwd1 \
   -e VIP_2_ID=52 \
   -e VIP_2_STATE=BACKUP \
   -e VIP_2_PRIORITY=50 \
   -e VIP_2_VIP=192.168.1.101/24 \
-  -e VIP_2_PASS=secretpass2 \
+  -e VIP_2_PASS=8ChrPwd2 \
   ghcr.io/kwiksand/docker_keepalived:latest init
 ```
 

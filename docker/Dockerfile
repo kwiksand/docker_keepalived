@@ -21,4 +21,4 @@ VOLUME ["/config"]
 HEALTHCHECK --interval=12s --timeout=2s --start-period=10s \
   CMD pgrep keepalived || exit 1
 
-CMD ["/app/run-keepalived.sh"]
+ENTRYPOINT ["/app/run-keepalived.sh"]
